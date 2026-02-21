@@ -1,0 +1,55 @@
+@import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  @apply bg-gradient-to-br from-blue-300 via-blue-200 to-blue-100 min-h-screen;
+  font-family: 'Fredoka', sans-serif;
+}
+
+/* Custom card back pattern */
+.card-back {
+  background: 
+    repeating-linear-gradient(
+      45deg,
+      #dc2626,
+      #dc2626 2px,
+      #ef4444 2px,
+      #ef4444 4px
+    ),
+    repeating-linear-gradient(
+      -45deg,
+      #dc2626,
+      #dc2626 2px,
+      #ef4444 2px,
+      #ef4444 4px
+    );
+  background-blend-mode: multiply;
+}
+
+/* Smooth animations */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from { 
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to { 
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.3s ease-out;
+}
+
+.animate-slideUp {
+  animation: slideUp 0.3s ease-out;
+}
