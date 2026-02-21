@@ -71,13 +71,14 @@ export default function GameTable({ room, socket }) {
   };
 
   return (
-    <div className="w-full max-w-5xl mx-auto px-2 sm:px-4">
-      {/* Game container with responsive sizing */}
-      <div className="relative w-full aspect-square max-w-3xl mx-auto">
-        {/* Green felt table */}
-        <div className="absolute inset-0 sm:inset-4 bg-gradient-to-br from-green-600 to-green-700 rounded-3xl shadow-2xl border-4 sm:border-8 border-gray-700">
-          {/* Inner border decoration */}
-          <div className="absolute inset-2 sm:inset-4 rounded-2xl border-2 sm:border-4 border-yellow-600 opacity-40"></div>
+    <div className="w-full h-full flex flex-col">
+      {/* Top section: Game table and info */}
+      <div className="flex-1 flex items-center justify-center px-2 sm:px-4 py-2">
+        <div className="relative w-full max-w-4xl" style={{ height: '60vh' }}>
+          {/* Green felt table */}
+          <div className="absolute inset-0 bg-gradient-to-br from-green-600 to-green-700 rounded-3xl shadow-2xl border-4 sm:border-8 border-gray-700">
+            {/* Inner border decoration */}
+            <div className="absolute inset-2 sm:inset-4 rounded-2xl border-2 sm:border-4 border-yellow-600 opacity-40"></div>
 
           {/* Trump Selector */}
           {room.gameState?.waitingForTrumpSelection && canChooseTrump && (
@@ -108,12 +109,37 @@ export default function GameTable({ room, socket }) {
             </div>
           )}
 
-          {/* Tens Display - Top Right (hidden on small screens) */}
-          <div className="hidden lg:block absolute top-2 right-2 sm:top-4 sm:right-4 z-10 w-40">
-            <TenCards 
-              tensCaptured={room.gameState?.tensCaptured || { teamA: [], teamB: [] }} 
-              teamScores={room.gameState?.teamScores || { teamA: 0, teamB: 0 }}
-            />
+          {/* Captured Tens Display - Top Right */}
+          <div className="absolute top-2 right-2 sm:top-4 sm:right-4 z-10 bg-white rounded-xl p-2 sm:p-3 shadow-lg">
+            <div className="text-xs font-bold text-center mb-2 font-fredoka">Captured 10s</div>
+            <div className="space-y-2">
+              <div className="bg-blue-50 rounded p-1.5">
+                <div className="text-xs font-semibold text-blue-700 mb-1">Team A</div>
+                <div className="flex gap-0.5 flex-wrap">
+                  {room.gameState?.tensCaptured?.teamA?.map((card, idx) => (
+                    <div key={idx} className="transform scale-[0.25] origin-top-left" style={{ width: '20px', height: '28px' }}>
+                      <Card card={card} />
+                    </div>
+                  ))}
+                  {(!room.gameState?.tensCaptured?.teamA || room.gameState.tensCaptured.teamA.length === 0) && (
+                    <div className="text-[10px] text-gray-400">None</div>
+                  )}
+                </div>
+              </div>
+              <div className="bg-red-50 rounded p-1.5">
+                <div className="text-xs font-semibold text-red-700 mb-1">Team B</div>
+                <div className="flex gap-0.5 flex-wrap">
+                  {room.gameState?.tensCaptured?.teamB?.map((card, idx) => (
+                    <div key={idx} className="transform scale-[0.25] origin-top-left" style={{ width: '20px', height: '28px' }}>
+                      <Card card={card} />
+                    </div>
+                  ))}
+                  {(!room.gameState?.tensCaptured?.teamB || room.gameState.tensCaptured.teamB.length === 0) && (
+                    <div className="text-[10px] text-gray-400">None</div>
+                  )}
+                </div>
+              </div>
+            </div>
           </div>
 
           {/* Turn Indicator - Bottom Left */}
@@ -147,58 +173,84 @@ export default function GameTable({ room, socket }) {
             </div>
           </div>
 
-          {/* Player avatars around table */}
+          {/* Player avatars around table - OUTSIDE the card area */}
           {room.players.map((player, idx) => {
             const position = getPlayerPosition(idx);
             const isCurrentTurn = idx === currentPlayerIndex;
             const playerTeam = idx % 2 === 0 ? 'teamA' : 'teamB';
             const teamColor = playerTeam === 'teamA' ? 'bg-blue-100 border-blue-400' : 'bg-red-100 border-red-400';
             
+            // Position avatars OUTSIDE the table, not overlapping with cards
             const positions = {
-              bottom: 'bottom-2 sm:bottom-4 left-1/2 -translate-x-1/2',
-              left: 'left-2 sm:left-4 top-1/2 -translate-y-1/2',
-              top: 'top-16 sm:top-20 left-1/2 -translate-x-1/2',
-              right: 'right-2 sm:right-4 top-1/2 -translate-y-1/2'
+              bottom: 'bottom-[-60px] left-1/2 -translate-x-1/2',
+              left: 'left-[-80px] top-1/2 -translate-y-1/2',
+              top: 'top-[-60px] left-1/2 -translate-x-1/2',
+              right: 'right-[-80px] top-1/2 -translate-y-1/2'
             };
+            
+            // Skip bottom position as that's where we'll show cards
+            if (position === 'bottom') return null;
             
             return (
               <div key={idx} className={`absolute ${positions[position]} z-20`}>
-                <div className={`${teamColor} border-2 rounded-xl p-1.5 sm:p-2 shadow-lg ${isCurrentTurn && !room.gameState?.waitingForTrumpSelection ? 'ring-2 sm:ring-4 ring-yellow-400 animate-pulse' : ''}`}>
-                  <div className="w-8 h-8 sm:w-12 sm:h-12 rounded-full bg-gradient-to-br from-orange-400 to-orange-600 flex items-center justify-center text-white font-bold text-sm sm:text-lg mb-1">
+                <div className={`${teamColor} border-2 rounded-xl p-2 shadow-lg ${isCurrentTurn && !room.gameState?.waitingForTrumpSelection ? 'ring-2 sm:ring-4 ring-yellow-400 animate-pulse' : ''}`}>
+                  <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-gradient-to-br from-orange-400 to-orange-600 flex items-center justify-center text-white font-bold text-base sm:text-lg mb-1">
                     {player.name.charAt(0).toUpperCase()}
                   </div>
-                  <div className="text-xs sm:text-sm font-bold text-center font-fredoka">{player.name}</div>
-                  {player.isAI && <span className="text-xs bg-gray-500 text-white px-1 rounded">AI</span>}
+                  <div className="text-xs sm:text-sm font-bold text-center font-fredoka whitespace-nowrap">{player.name}</div>
+                  {player.isAI && <span className="text-[10px] bg-gray-500 text-white px-1 rounded block text-center mt-1">AI</span>}
                 </div>
               </div>
             );
           })}
 
-          {/* My hand - bottom */}
-          {myHand && myHand.cards && (
-            <div className="absolute bottom-0 left-1/2 -translate-x-1/2 flex gap-1 sm:gap-2 pb-2 sm:pb-4 overflow-x-auto max-w-full px-2">
+          </div>
+        </div>
+      </div>
+      
+      {/* Bottom section: My hand in 4x2 grid */}
+      {myHand && myHand.cards && (
+        <div className="bg-gradient-to-b from-gray-800 to-gray-900 py-4 px-2 sm:px-4 border-t-4 border-yellow-600">
+          <div className="max-w-6xl mx-auto">
+            {/* My player info */}
+            <div className="flex items-center justify-center gap-3 mb-3">
+              <div className={`${myPlayer && myPlayer.position % 2 === 0 ? 'bg-blue-100 border-blue-400' : 'bg-red-100 border-red-400'} border-2 rounded-xl px-4 py-2 shadow-lg ${isMyTurn && !room.gameState?.waitingForTrumpSelection ? 'ring-2 ring-yellow-400 animate-pulse' : ''}`}>
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-orange-400 to-orange-600 flex items-center justify-center text-white font-bold text-sm">
+                    {myPlayer?.name.charAt(0).toUpperCase()}
+                  </div>
+                  <div className="text-sm font-bold font-fredoka">{myPlayer?.name}</div>
+                </div>
+              </div>
+              {isMyTurn && !room.gameState?.waitingForTrumpSelection && (
+                <div className="bg-yellow-400 text-black px-3 py-1 rounded-full text-xs font-bold animate-pulse">
+                  YOUR TURN!
+                </div>
+              )}
+            </div>
+            
+            {/* Cards in 4x2 grid */}
+            <div className="grid grid-cols-4 gap-2 sm:gap-3 max-w-4xl mx-auto">
               {myHand.cards.map((card, idx) => (
                 <div
                   key={idx}
                   onClick={() => !room.gameState?.waitingForTrumpSelection && isMyTurn && playCard(idx)}
-                  className={`cursor-pointer transform transition-all duration-300 flex-shrink-0 ${
+                  className={`cursor-pointer transform transition-all duration-300 ${
                     isMyTurn && !room.gameState?.waitingForTrumpSelection 
-                      ? 'hover:-translate-y-4 sm:hover:-translate-y-8 hover:scale-110 sm:hover:scale-125' 
-                      : 'opacity-75 grayscale'
-                  } ${selectedCard === idx ? '-translate-y-4 sm:-translate-y-8 scale-110' : ''}`}
+                      ? 'hover:-translate-y-2 hover:scale-105 hover:brightness-110' 
+                      : 'opacity-60 grayscale cursor-not-allowed'
+                  } ${selectedCard === idx ? '-translate-y-2 scale-105 ring-2 ring-yellow-400' : ''}`}
                   style={{
-                    filter: isMyTurn && !room.gameState?.waitingForTrumpSelection ? 'drop-shadow(0 4px 8px rgba(0,0,0,0.3))' : ''
+                    filter: isMyTurn && !room.gameState?.waitingForTrumpSelection ? 'drop-shadow(0 4px 8px rgba(0,0,0,0.5))' : ''
                   }}
                 >
-                  <div className="scale-75 sm:scale-100">
-                    <Card card={card} />
-                  </div>
+                  <Card card={card} />
                 </div>
               ))}
             </div>
-          )}
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }
