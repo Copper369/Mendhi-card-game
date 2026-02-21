@@ -36,15 +36,33 @@ A real-time multiplayer implementation of the Indian card game Mendhikot (32-car
 
 ## 🚀 Quick Deploy
 
-### One-Click Deploy Options
+### ✅ Frontend Already Deployed!
+**Live at**: https://mendhikot-io.vercel.app
 
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/yourusername/mendhikot)
-[![Deploy on Railway](https://railway.app/button.svg)](https://railway.app/new/template)
-[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy)
+### ⚠️ Backend Deployment Needed
 
-### Manual Deployment
+[![Deploy on Railway](https://railway.app/button.svg)](https://railway.app/template/mendhikot)
 
-See [DEPLOYMENT.md](./DEPLOYMENT.md) for detailed instructions.
+**Manual Deploy to Railway:**
+
+1. Go to: https://railway.app/new
+2. Click "Deploy from GitHub repo"
+3. Select: `Copper369/Mendhi-card-game`
+4. Add environment variables:
+   ```
+   MONGODB_URI=mongodb+srv://ayushkarnewar1729_db_user:ZD4ov504HhsP5gGM@demo3.xbqkzmh.mongodb.net/tasksDB?appName=Demo3
+   PORT=3001
+   ```
+5. Settings → Start Command: `node server/index.js`
+6. Generate domain and copy URL
+7. Update frontend:
+   ```bash
+   vercel env add NEXT_PUBLIC_SOCKET_URL production
+   # Paste Railway URL
+   vercel --prod
+   ```
+
+**See [BACKEND_DEPLOYMENT.md](./BACKEND_DEPLOYMENT.md) for detailed instructions.**
 
 ## 📋 Prerequisites
 
