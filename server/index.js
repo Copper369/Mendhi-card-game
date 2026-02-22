@@ -189,6 +189,41 @@ io.on('connection', (socket) => {
     }
   });
 
+  socket.on('end_game_early', ({ roomId }) => {
+    const room = gameManager.getRoom(roomId);
+    if (room && room.gameState) {
+      // Initialize end game votes if not exists
+      if (!room.gameState.endGameVotes) {
+        room.gameState.endGameVotes = [];
+      }
+      
+      // Add vote if not already voted
+      if (!room.gameState.endGameVotes.includes(socket.id)) {
+        room.gameState.endGameVotes.push(socket.id);
+        
+        const votesNeeded = 3; // Majority (3 out of 4)
+        const currentVotes = room.gameState.endGameVotes.length;
+        
+        // Notify all players about the vote
+        io.to(roomId).emit('end_game_vote', { 
+          votes: currentVotes, 
+          needed: votesNeeded,
+          voters: room.gameState.endGameVotes.map(id => {
+            const player = room.players.find(p => p.socketId === id);
+            return player ? player.name : 'Unknown';
+          })
+        });
+        
+        // If majority reached, end game
+        if (currentVotes >= votesNeeded) {
+          const dashboard = gameManager.getMatchDashboard(room);
+          room.gameState.endGameVotes = []; // Reset votes
+          io.to(roomId).emit('match_dashboard', dashboard);
+        }
+      }
+    }
+  });
+
   socket.on('chat_message', ({ roomId, message }) => {
     const room = gameManager.getRoom(roomId);
     if (room) {

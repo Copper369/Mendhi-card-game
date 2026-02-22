@@ -4,7 +4,7 @@ import TrumpSelector from './TrumpSelector';
 import Lobby from './Lobby';
 import TenCards from './TenCards';
 
-export default function GameTable({ room, socket }) {
+export default function GameTable({ room, socket, endGameVotes }) {
   const [selectedCard, setSelectedCard] = useState(null);
 
   const myPlayer = room.players.find(p => p.socketId === socket.id);
@@ -96,11 +96,33 @@ export default function GameTable({ room, socket }) {
 
           {/* Score Panel - Top Left */}
           <div className="absolute top-2 left-2 sm:top-4 sm:left-4 bg-white rounded-xl p-2 sm:p-3 shadow-lg z-10 text-xs sm:text-sm">
-            <div className="font-bold mb-1 font-fredoka">Round {room.gameState?.roundNumber ?? 1}</div>
+            <div className="font-bold mb-1 font-fredoka">Round {room.gameState?.roundNumber ?? 1}/{room.gameState?.totalRounds ?? 5}</div>
             <div className="space-y-0.5">
               <div className="text-blue-700">Team A: {room.gameState?.teamScores?.teamA ?? 0}</div>
               <div className="text-red-700">Team B: {room.gameState?.teamScores?.teamB ?? 0}</div>
             </div>
+            {room.gameState?.roundNumber >= 3 && (
+              <>
+                <button
+                  onClick={() => socket.emit('end_game_early', { roomId: room.roomId })}
+                  className="mt-2 w-full bg-red-600 hover:bg-red-700 text-white text-xs py-1 px-2 rounded transition"
+                >
+                  End Game
+                </button>
+                {endGameVotes && endGameVotes.votes > 0 && (
+                  <div className="mt-2 bg-yellow-100 border border-yellow-400 rounded p-1.5">
+                    <div className="text-[10px] font-bold text-yellow-800 mb-0.5">
+                      Votes: {endGameVotes.votes}/{endGameVotes.needed}
+                    </div>
+                    <div className="text-[9px] text-yellow-700">
+                      {endGameVotes.voters.map((voter, idx) => (
+                        <div key={idx}>✓ {voter}</div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
           </div>
 
           {/* Trump Display - Top Center */}

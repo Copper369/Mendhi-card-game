@@ -264,12 +264,22 @@ function playCard(roomId, socketId, cardIndex) {
     return { success: false, message: 'Waiting for trump selection' };
   }
 
+  if (room.gameState.phase !== 'playing') {
+    return { success: false, message: 'Game not in playing phase' };
+  }
+
   const currentPlayer = room.players[room.gameState.currentTurn];
   if (currentPlayer.socketId !== socketId) {
     return { success: false, message: 'Not your turn' };
   }
 
-  const playerHand = room.gameState.hands.find(h => h.playerId === socketId);
+  // Find player hand by socket ID or player name
+  let playerHand = room.gameState.hands.find(h => h.playerId === socketId);
+  if (!playerHand) {
+    const playerName = currentPlayer.name;
+    playerHand = room.gameState.hands.find(h => h.playerName === playerName);
+  }
+  
   if (!playerHand || cardIndex >= playerHand.cards.length) {
     return { success: false, message: 'Invalid card' };
   }
@@ -666,5 +676,6 @@ module.exports = {
   resetGame,
   playerReady,
   dealCardsToPlayers,
-  setSpinBottleResult
+  setSpinBottleResult,
+  getMatchDashboard
 };

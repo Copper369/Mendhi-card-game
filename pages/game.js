@@ -24,6 +24,7 @@ export default function Game() {
   const [pendingNavigation, setPendingNavigation] = useState(null);
   const [showSpinBottle, setShowSpinBottle] = useState(false);
   const [showChooseFirstPlayer, setShowChooseFirstPlayer] = useState(false);
+  const [endGameVotes, setEndGameVotes] = useState({ votes: 0, needed: 3, voters: [] });
 
   // Prevent accidental page leave
   useEffect(() => {
@@ -191,6 +192,10 @@ export default function Game() {
       }, 3000);
     });
 
+    socket.on('end_game_vote', ({ votes, needed, voters }) => {
+      setEndGameVotes({ votes, needed, voters });
+    });
+
     return () => {
       socket.off('joined_room');
       socket.off('game_update');
@@ -209,6 +214,7 @@ export default function Game() {
       socket.off('error');
       socket.off('player_disconnect');
       socket.off('player_reconnected');
+      socket.off('end_game_vote');
     };
   }, [socket, roomId, router, setRoom, addChatMessage, trumpNotification, showChooseFirstPlayer]);
 
@@ -313,7 +319,7 @@ export default function Game() {
           <p className="text-xs sm:text-sm text-gray-600 font-fredoka">Room ID: {room.roomId}</p>
         </div>
 
-        <GameTable room={room} socket={socket} />
+        <GameTable room={room} socket={socket} endGameVotes={endGameVotes} />
       </div>
       
       {/* Chat as floating icon */}
