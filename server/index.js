@@ -27,8 +27,8 @@ app.get('/api/rooms', (req, res) => {
 });
 
 app.post('/api/rooms', (req, res) => {
-  const { roomName, playerName, socketId } = req.body;
-  const room = gameManager.createRoom(roomName, socketId);
+  const { roomName } = req.body;
+  const room = gameManager.createRoom(roomName);
   res.json(room);
 });
 
@@ -102,6 +102,9 @@ io.on('connection', (socket) => {
     if (result.success) {
       socket.join(roomId);
       socket.emit('joined_room', result.room);
+      
+      console.log(`Room ${roomId} admin: ${result.room.adminSocketId}`);
+      console.log(`Player ${playerName} socket: ${socket.id}`);
       
       // Notify room about join/reconnection
       if (result.reconnected) {

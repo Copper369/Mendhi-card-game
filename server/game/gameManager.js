@@ -7,7 +7,7 @@ function setIO(io) {
   ioInstance = io;
 }
 
-function createRoom(roomName, creatorSocketId) {
+function createRoom(roomName) {
   const roomId = Math.random().toString(36).substring(7);
   const room = {
     roomId,
@@ -15,7 +15,7 @@ function createRoom(roomName, creatorSocketId) {
     players: [],
     gameState: null,
     chatHistory: [],
-    adminSocketId: creatorSocketId, // Track room creator as admin
+    adminSocketId: null, // Will be set when first player joins
     createdAt: Date.now()
   };
   rooms.set(roomId, room);
@@ -26,15 +26,24 @@ function joinRoom(roomId, socketId, playerName) {
   const room = rooms.get(roomId);
   if (!room) return { success: false, message: 'Room not found' };
   
+  // Set admin if not already set (first player to join becomes admin)
+  if (!room.adminSocketId && room.players.length === 0) {
+    room.adminSocketId = socketId;
+  }
+  
   // Check if this player was in the room before (reconnection)
   const existingPlayerIndex = room.players.findIndex(p => p.name === playerName && !p.isAI);
   
   if (existingPlayerIndex !== -1) {
     // Player is reconnecting - update their socket ID
     const existingPlayer = room.players[existingPlayerIndex];
-    const oldSocketId = existingPlayer.socketId;
     existingPlayer.socketId = socketId;
     existingPlayer.disconnected = false;
+    
+    // Update admin socket ID if this player is the admin
+    if (room.adminSocketId === existingPlayer.socketId) {
+      room.adminSocketId = socketId;
+    }
     
     // If they were temporarily replaced by AI, restore them
     if (existingPlayer.isAI) {
@@ -135,6 +144,9 @@ function playerReady(roomId, socketId) {
   if (!room.gameState.readyPlayers.includes(socketId)) {
     room.gameState.readyPlayers.push(socketId);
   }
+  
+  // Reset end game votes when starting a new round
+  room.gameState.endGameVotes = [];
 
   // If all players ready, start with spin bottle for first round
   if (room.gameState.readyPlayers.length === 4) {
@@ -507,6 +519,9 @@ function resetGame(roomId) {
   if (!room) return { success: false };
 
   // Return to lobby instead of clearing game state
+  // IMPORTANT: Preserve adminSocketId
+  const adminSocketId = room.adminSocketId;
+  
   if (room.gameState) {
     room.gameState.phase = 'lobby';
     room.gameState.hands = [];
@@ -526,6 +541,9 @@ function resetGame(roomId) {
     room.gameState.readyPlayers = [];
     room.gameState.endGameVotes = [];
   }
+  
+  // Restore admin
+  room.adminSocketId = adminSocketId;
 
   return { success: true, room };
 }

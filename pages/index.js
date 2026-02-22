@@ -34,29 +34,15 @@ export default function Home() {
     }
 
     try {
-      // Create socket connection first to get socket ID
-      const socket = io(process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:3001');
-      
-      // Wait for connection
-      socket.on('connect', async () => {
-        const res = await fetch(`${process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:3001'}/api/rooms`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ 
-            roomName: roomName || 'New Room', 
-            playerName,
-            socketId: socket.id 
-          })
-        });
-        const room = await res.json();
-        
-        setSocket(socket);
-        setStoreName(playerName);
-        setRoomId(room.roomId);
-        
-        socket.emit('join_room', { roomId: room.roomId, playerName });
-        router.push('/game');
+      const res = await fetch(`${process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:3001'}/api/rooms`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          roomName: roomName || 'New Room'
+        })
       });
+      const room = await res.json();
+      joinRoom(room.roomId);
     } catch (err) {
       console.error('Failed to create room:', err);
       alert('Failed to create room');
@@ -79,7 +65,15 @@ export default function Home() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-3 sm:p-4">
+    <div className="min-h-screen flex items-center justify-center p-3 sm:p-4 relative">
+      {/* Admin Portal Link */}
+      <a
+        href="/admin"
+        className="absolute top-4 right-4 bg-gray-800 text-white px-3 py-2 rounded-lg hover:bg-gray-700 transition text-xs sm:text-sm font-semibold"
+      >
+        🔐 Admin
+      </a>
+      
       <div className="bg-white rounded-lg shadow-2xl p-4 sm:p-6 md:p-8 max-w-3xl w-full">
         <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-center mb-2 text-green-800">Mendhikot Online</h1>
         <p className="text-center text-sm sm:text-base text-gray-600 mb-6 sm:mb-8">32-Card Multiplayer Game</p>

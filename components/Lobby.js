@@ -7,6 +7,11 @@ export default function Lobby({ room, socket, myPlayer }) {
   const [maxRounds, setMaxRounds] = useState(room.gameState?.totalRounds || 5);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
+  // Debug logging
+  console.log('Lobby - Room admin:', room.adminSocketId);
+  console.log('Lobby - My socket:', socket.id);
+  console.log('Lobby - Is admin:', isAdmin);
+
   const handleReady = () => {
     socket.emit('player_ready', { roomId: room.roomId });
   };
