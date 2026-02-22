@@ -7,14 +7,16 @@ function setIO(io) {
   ioInstance = io;
 }
 
-function createRoom(roomName) {
+function createRoom(roomName, creatorSocketId) {
   const roomId = Math.random().toString(36).substring(7);
   const room = {
     roomId,
     roomName: roomName || `Room ${roomId}`,
     players: [],
     gameState: null,
-    chatHistory: []
+    chatHistory: [],
+    adminSocketId: creatorSocketId, // Track room creator as admin
+    createdAt: Date.now()
   };
   rooms.set(roomId, room);
   return room;
@@ -119,7 +121,7 @@ function startGame(roomId) {
     trickNumber: 0,
     roundNumber: 1,
     lastRoundWinner: null,
-    totalRounds: 5,
+    totalRounds: 5, // Default, can be changed by admin
     readyPlayers: []
   };
   
@@ -504,11 +506,94 @@ function resetGame(roomId) {
   const room = rooms.get(roomId);
   if (!room) return { success: false };
 
-  // Reset everything except players
-  room.gameState = null;
-  room.chatHistory = [];
+  // Return to lobby instead of clearing game state
+  if (room.gameState) {
+    room.gameState.phase = 'lobby';
+    room.gameState.hands = [];
+    room.gameState.currentTurn = 0;
+    room.gameState.trumpSuit = null;
+    room.gameState.trumpChoosingTeam = 0;
+    room.gameState.waitingForTrumpSelection = false;
+    room.gameState.tableCards = [];
+    room.gameState.capturedCards = { teamA: [], teamB: [] };
+    room.gameState.tensCaptured = { teamA: [], teamB: [] };
+    room.gameState.tricksWon = { teamA: 0, teamB: 0 };
+    room.gameState.teamScores = { teamA: 0, teamB: 0 };
+    room.gameState.leadSuit = null;
+    room.gameState.trickNumber = 0;
+    room.gameState.roundNumber = 1;
+    room.gameState.lastRoundWinner = null;
+    room.gameState.readyPlayers = [];
+    room.gameState.endGameVotes = [];
+  }
 
   return { success: true, room };
+}
+
+function setMaxRounds(roomId, socketId, maxRounds) {
+  const room = rooms.get(roomId);
+  if (!room) return { success: false, message: 'Room not found' };
+  
+  // Check if player is admin
+  if (room.adminSocketId !== socketId) {
+    return { success: false, message: 'Only room admin can change settings' };
+  }
+  
+  // Validate max rounds (1-10)
+  if (maxRounds < 1 || maxRounds > 10) {
+    return { success: false, message: 'Max rounds must be between 1 and 10' };
+  }
+  
+  if (room.gameState) {
+    room.gameState.totalRounds = maxRounds;
+  }
+  
+  return { success: true, room, maxRounds };
+}
+
+function deleteRoom(roomId, socketId) {
+  const room = rooms.get(roomId);
+  if (!room) return { success: false, message: 'Room not found' };
+  
+  // Check if player is admin
+  if (room.adminSocketId !== socketId) {
+    return { success: false, message: 'Only room admin can delete room' };
+  }
+  
+  rooms.delete(roomId);
+  return { success: true, roomId };
+}
+
+function deleteRoomByDeveloper(roomId, developerKey) {
+  // Simple developer authentication
+  if (developerKey !== process.env.DEVELOPER_KEY) {
+    return { success: false, message: 'Invalid developer key' };
+  }
+  
+  const room = rooms.get(roomId);
+  if (!room) return { success: false, message: 'Room not found' };
+  
+  rooms.delete(roomId);
+  return { success: true, roomId };
+}
+
+function getAllRoomsForDeveloper(developerKey) {
+  if (developerKey !== process.env.DEVELOPER_KEY) {
+    return { success: false, message: 'Invalid developer key' };
+  }
+  
+  return {
+    success: true,
+    rooms: Array.from(rooms.values()).map(r => ({
+      roomId: r.roomId,
+      roomName: r.roomName,
+      playerCount: r.players.length,
+      players: r.players.map(p => ({ name: p.name, isAI: p.isAI })),
+      gamePhase: r.gameState?.phase || 'not started',
+      createdAt: r.createdAt,
+      adminName: r.players.find(p => p.socketId === r.adminSocketId)?.name || 'Unknown'
+    }))
+  };
 }
 
 function nextTrick(roomId) {
@@ -678,5 +763,9 @@ module.exports = {
   playerReady,
   dealCardsToPlayers,
   setSpinBottleResult,
-  getMatchDashboard
+  getMatchDashboard,
+  setMaxRounds,
+  deleteRoom,
+  deleteRoomByDeveloper,
+  getAllRoomsForDeveloper
 };

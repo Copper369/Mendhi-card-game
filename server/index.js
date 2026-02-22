@@ -27,9 +27,69 @@ app.get('/api/rooms', (req, res) => {
 });
 
 app.post('/api/rooms', (req, res) => {
-  const { roomName, playerName } = req.body;
-  const room = gameManager.createRoom(roomName);
+  const { roomName, playerName, socketId } = req.body;
+  const room = gameManager.createRoom(roomName, socketId);
   res.json(room);
+});
+
+// Developer admin endpoints
+app.post('/api/admin/login', (req, res) => {
+  const { username, password } = req.body;
+  
+  if (username === process.env.ADMIN_USERNAME && password === process.env.ADMIN_PASSWORD) {
+    // Generate a simple session token (in production, use JWT or proper session management)
+    const token = Buffer.from(`${username}:${password}`).toString('base64');
+    res.json({ success: true, token });
+  } else {
+    res.status(401).json({ success: false, message: 'Invalid credentials' });
+  }
+});
+
+app.get('/api/admin/rooms', (req, res) => {
+  const authHeader = req.headers['authorization'];
+  
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+  
+  const token = authHeader.substring(7);
+  const decoded = Buffer.from(token, 'base64').toString();
+  const [username, password] = decoded.split(':');
+  
+  if (username !== process.env.ADMIN_USERNAME || password !== process.env.ADMIN_PASSWORD) {
+    return res.status(401).json({ error: 'Invalid credentials' });
+  }
+  
+  const result = gameManager.getAllRoomsForDeveloper('valid');
+  if (result.success) {
+    res.json(result.rooms);
+  } else {
+    res.status(401).json({ error: result.message });
+  }
+});
+
+app.delete('/api/admin/rooms/:roomId', (req, res) => {
+  const { roomId } = req.params;
+  const authHeader = req.headers['authorization'];
+  
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+  
+  const token = authHeader.substring(7);
+  const decoded = Buffer.from(token, 'base64').toString();
+  const [username, password] = decoded.split(':');
+  
+  if (username !== process.env.ADMIN_USERNAME || password !== process.env.ADMIN_PASSWORD) {
+    return res.status(401).json({ error: 'Invalid credentials' });
+  }
+  
+  const result = gameManager.deleteRoomByDeveloper(roomId, 'valid');
+  if (result.success) {
+    res.json({ message: 'Room deleted successfully' });
+  } else {
+    res.status(result.message === 'Invalid developer key' ? 401 : 404).json({ error: result.message });
+  }
 });
 
 // Socket.IO connection
@@ -185,7 +245,33 @@ io.on('connection', (socket) => {
   socket.on('reset_game', ({ roomId }) => {
     const result = gameManager.resetGame(roomId);
     if (result.success) {
-      io.to(roomId).emit('game_reset', result.room);
+      io.to(roomId).emit('return_to_lobby', result.room);
+    }
+  });
+
+  socket.on('set_max_rounds', ({ roomId, maxRounds }) => {
+    const result = gameManager.setMaxRounds(roomId, socket.id, maxRounds);
+    if (result.success) {
+      io.to(roomId).emit('max_rounds_updated', { maxRounds: result.maxRounds });
+      io.to(roomId).emit('game_update', result.room);
+    } else {
+      socket.emit('error', result.message);
+    }
+  });
+
+  socket.on('delete_room', ({ roomId }) => {
+    const result = gameManager.deleteRoom(roomId, socket.id);
+    if (result.success) {
+      io.to(roomId).emit('room_deleted', { message: 'Room has been deleted by admin' });
+      // Force disconnect all players from this room
+      const socketsInRoom = io.sockets.adapter.rooms.get(roomId);
+      if (socketsInRoom) {
+        socketsInRoom.forEach(socketId => {
+          io.sockets.sockets.get(socketId)?.leave(roomId);
+        });
+      }
+    } else {
+      socket.emit('error', result.message);
     }
   });
 

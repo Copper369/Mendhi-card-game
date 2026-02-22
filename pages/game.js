@@ -163,10 +163,21 @@ export default function Game() {
       }, 4000);
     });
 
-    socket.on('game_reset', (roomData) => {
+    socket.on('return_to_lobby', (roomData) => {
       setRoom(roomData);
       setMatchDashboard(null);
-      router.push('/');
+      setRoundResult(null);
+      setEndGameVotes({ votes: 0, needed: 3, voters: [] });
+    });
+
+    socket.on('room_deleted', ({ message }) => {
+      alert(message);
+      window.location.href = '/';
+    });
+
+    socket.on('max_rounds_updated', ({ maxRounds }) => {
+      // Room will be updated via game_update event
+      console.log('Max rounds updated to:', maxRounds);
     });
 
     socket.on('chat_message', (msg) => {
@@ -209,7 +220,9 @@ export default function Game() {
       socket.off('round_result');
       socket.off('next_round_start');
       socket.off('match_dashboard');
-      socket.off('game_reset');
+      socket.off('return_to_lobby');
+      socket.off('room_deleted');
+      socket.off('max_rounds_updated');
       socket.off('chat_message');
       socket.off('error');
       socket.off('player_disconnect');

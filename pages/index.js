@@ -34,13 +34,29 @@ export default function Home() {
     }
 
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:3001'}/api/rooms`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ roomName: roomName || 'New Room', playerName })
+      // Create socket connection first to get socket ID
+      const socket = io(process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:3001');
+      
+      // Wait for connection
+      socket.on('connect', async () => {
+        const res = await fetch(`${process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:3001'}/api/rooms`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            roomName: roomName || 'New Room', 
+            playerName,
+            socketId: socket.id 
+          })
+        });
+        const room = await res.json();
+        
+        setSocket(socket);
+        setStoreName(playerName);
+        setRoomId(room.roomId);
+        
+        socket.emit('join_room', { roomId: room.roomId, playerName });
+        router.push('/game');
       });
-      const room = await res.json();
-      joinRoom(room.roomId);
     } catch (err) {
       console.error('Failed to create room:', err);
       alert('Failed to create room');

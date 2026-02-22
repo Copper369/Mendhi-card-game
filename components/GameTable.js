@@ -184,14 +184,25 @@ export default function GameTable({ room, socket, endGameVotes }) {
 
           {/* Table cards in center */}
           <div className="absolute inset-0 flex items-center justify-center">
-            <div className="grid grid-cols-2 gap-2 sm:gap-4">
-              {room.gameState?.tableCards?.map((tc, idx) => (
-                <div key={idx} className="transform hover:scale-105 transition-transform">
-                  <div className="scale-75 sm:scale-100">
-                    <Card card={tc.card} />
+            <div className="grid grid-cols-2 gap-3 sm:gap-6">
+              {room.gameState?.tableCards?.map((tc, idx) => {
+                const player = room.players.find(p => p.socketId === tc.playerId);
+                const playerTeam = tc.position % 2 === 0 ? 'teamA' : 'teamB';
+                const teamColor = playerTeam === 'teamA' ? 'text-blue-700' : 'text-red-700';
+                
+                return (
+                  <div key={idx} className="flex flex-col items-center gap-1">
+                    <div className="transform hover:scale-105 transition-transform">
+                      <div className="scale-75 sm:scale-100">
+                        <Card card={tc.card} />
+                      </div>
+                    </div>
+                    <div className={`text-[10px] sm:text-xs font-bold ${teamColor} bg-white bg-opacity-90 px-2 py-0.5 rounded-full shadow-sm`}>
+                      {player?.name || 'Unknown'}
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
 
