@@ -18,6 +18,50 @@ export default function Game() {
   const [trumpNotification, setTrumpNotification] = useState(null);
   const [showDealing, setShowDealing] = useState(false);
   const [showCelebration, setShowCelebration] = useState(null);
+  const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
+  const [pendingNavigation, setPendingNavigation] = useState(null);
+
+  // Prevent accidental page leave
+  useEffect(() => {
+    const handleBeforeUnload = (e) => {
+      if (room && room.gameState) {
+        e.preventDefault();
+        e.returnValue = 'Are you sure you want to leave? Your game progress will be lost.';
+        return e.returnValue;
+      }
+    };
+
+    const handleRouteChange = (url) => {
+      if (room && room.gameState && url !== router.asPath) {
+        setShowLeaveConfirm(true);
+        setPendingNavigation(url);
+        router.events.emit('routeChangeError');
+        throw 'Route change aborted by user confirmation';
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    router.events.on('routeChangeStart', handleRouteChange);
+
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      router.events.off('routeChangeStart', handleRouteChange);
+    };
+  }, [room, router]);
+
+  const handleLeaveGame = () => {
+    setShowLeaveConfirm(false);
+    if (pendingNavigation) {
+      router.push(pendingNavigation);
+    } else {
+      router.push('/');
+    }
+  };
+
+  const handleCancelLeave = () => {
+    setShowLeaveConfirm(false);
+    setPendingNavigation(null);
+  };
 
   useEffect(() => {
     if (!socket || !roomId) {
@@ -109,6 +153,16 @@ export default function Game() {
       console.log('Player disconnected:', socketId);
     });
 
+    socket.on('player_reconnected', ({ playerName, message }) => {
+      console.log('Player reconnected:', playerName);
+      setTrumpNotification({ message, isReconnect: true });
+      setTimeout(() => {
+        if (trumpNotification?.isReconnect) {
+          setTrumpNotification(null);
+        }
+      }, 3000);
+    });
+
     return () => {
       socket.off('joined_room');
       socket.off('game_update');
@@ -124,8 +178,9 @@ export default function Game() {
       socket.off('chat_message');
       socket.off('error');
       socket.off('player_disconnect');
+      socket.off('player_reconnected');
     };
-  }, [socket, roomId, router, setRoom, addChatMessage]);
+  }, [socket, roomId, router, setRoom, addChatMessage, trumpNotification]);
 
   const handleResetGame = () => {
     socket.emit('reset_game', { roomId });
@@ -160,8 +215,8 @@ export default function Game() {
       )}
 
       {trumpNotification && (
-        <div className="fixed top-20 left-1/2 -translate-x-1/2 bg-yellow-400 text-black px-4 sm:px-6 py-2 sm:py-3 rounded-lg shadow-lg z-50 animate-bounce text-sm sm:text-base font-fredoka">
-          {trumpNotification.isDealing ? (
+        <div className={`fixed top-20 left-1/2 -translate-x-1/2 ${trumpNotification.isReconnect ? 'bg-green-400' : 'bg-yellow-400'} text-black px-4 sm:px-6 py-2 sm:py-3 rounded-lg shadow-lg z-50 animate-bounce text-sm sm:text-base font-fredoka`}>
+          {trumpNotification.isDealing || trumpNotification.isReconnect ? (
             <span className="font-bold">{trumpNotification.message}</span>
           ) : (
             <>
@@ -178,6 +233,39 @@ export default function Game() {
       {roundResult && !showCelebration && <RoundResult result={roundResult} onClose={() => setRoundResult(null)} />}
       {matchDashboard && <MatchDashboard dashboard={matchDashboard} onReset={handleResetGame} />}
       
+      {/* Leave Game Confirmation Dialog */}
+      {showLeaveConfirm && (
+        <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-2xl p-6 sm:p-8 max-w-md w-full animate-bounce-in">
+            <div className="text-center mb-6">
+              <div className="text-5xl mb-4">⚠️</div>
+              <h2 className="text-2xl font-bold text-gray-800 mb-2 font-fredoka">Leave Game?</h2>
+              <p className="text-gray-600">
+                Are you sure you want to leave? Your game is in progress and you'll lose your spot.
+              </p>
+              <p className="text-sm text-blue-600 mt-2">
+                💡 You can rejoin with the same name to continue playing!
+              </p>
+            </div>
+            
+            <div className="flex gap-3">
+              <button
+                onClick={handleCancelLeave}
+                className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-800 py-3 rounded-lg font-semibold transition"
+              >
+                Stay in Game
+              </button>
+              <button
+                onClick={handleLeaveGame}
+                className="flex-1 bg-red-600 hover:bg-red-700 text-white py-3 rounded-lg font-semibold transition"
+              >
+                Leave Game
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      
       <div className="container mx-auto px-2 sm:px-4 py-4 sm:py-8 relative z-10">
         <div className="text-center mb-2 sm:mb-4">
           <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-800 font-fredoka">{room.roomName}</h2>
@@ -189,6 +277,17 @@ export default function Game() {
       
       {/* Chat as floating icon */}
       <ChatPanel socket={socket} roomId={roomId} />
+      
+      <style jsx>{`
+        @keyframes bounce-in {
+          0% { transform: scale(0.8); opacity: 0; }
+          50% { transform: scale(1.05); }
+          100% { transform: scale(1); opacity: 1; }
+        }
+        .animate-bounce-in {
+          animation: bounce-in 0.3s ease-out;
+        }
+      `}</style>
     </div>
   );
 }

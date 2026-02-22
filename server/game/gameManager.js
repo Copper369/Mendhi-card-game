@@ -24,11 +24,31 @@ function joinRoom(roomId, socketId, playerName) {
   const room = rooms.get(roomId);
   if (!room) return { success: false, message: 'Room not found' };
   
+  // Check if this player was in the room before (reconnection)
+  const existingPlayerIndex = room.players.findIndex(p => p.name === playerName && !p.isAI);
+  
+  if (existingPlayerIndex !== -1) {
+    // Player is reconnecting - update their socket ID
+    const existingPlayer = room.players[existingPlayerIndex];
+    existingPlayer.socketId = socketId;
+    existingPlayer.disconnected = false;
+    
+    // Update hands if game is in progress
+    if (room.gameState && room.gameState.hands) {
+      const handIndex = room.gameState.hands.findIndex(h => h.playerId === existingPlayer.socketId || h.playerName === playerName);
+      if (handIndex !== -1) {
+        room.gameState.hands[handIndex].playerId = socketId;
+      }
+    }
+    
+    return { success: true, room, reconnected: true };
+  }
+  
   // Check if room already has 4 human players
-  const humanPlayers = room.players.filter(p => !p.isAI);
+  const humanPlayers = room.players.filter(p => !p.isAI && !p.disconnected);
   if (humanPlayers.length >= 4) return { success: false, message: 'Room full' };
   
-  // Check if player already in room
+  // Check if player already in room with different name
   if (room.players.find(p => p.socketId === socketId)) {
     return { success: false, message: 'Already in room' };
   }
@@ -40,14 +60,16 @@ function joinRoom(roomId, socketId, playerName) {
       socketId,
       name: playerName,
       isAI: false,
-      position: aiIndex
+      position: aiIndex,
+      disconnected: false
     };
   } else {
     room.players.push({
       socketId,
       name: playerName,
       isAI: false,
-      position: room.players.length
+      position: room.players.length,
+      disconnected: false
     });
   }
 
@@ -57,11 +79,12 @@ function joinRoom(roomId, socketId, playerName) {
       socketId: `ai-${Math.random().toString(36).substring(7)}`,
       name: `AI Player ${room.players.length + 1}`,
       isAI: true,
-      position: room.players.length
+      position: room.players.length,
+      disconnected: false
     });
   }
 
-  return { success: true, room };
+  return { success: true, room, reconnected: false };
 }
 
 function startGame(roomId) {
@@ -125,7 +148,8 @@ function dealCardsToPlayers(roomId) {
   room.gameState.remainingDeck = deck;
   room.gameState.phase = 'dealing';
   room.gameState.hands = initialHands.map((hand, i) => ({ 
-    playerId: room.players[i].socketId, 
+    playerId: room.players[i].socketId,
+    playerName: room.players[i].name, // Store name for reconnection
     cards: hand 
   }));
 
@@ -382,7 +406,8 @@ function nextRound(roomId) {
   // Store remaining deck for later
   room.gameState.remainingDeck = deck;
   room.gameState.hands = initialHands.map((hand, i) => ({ 
-    playerId: room.players[i].socketId, 
+    playerId: room.players[i].socketId,
+    playerName: room.players[i].name, // Store name for reconnection
     cards: hand 
   }));
 
@@ -442,10 +467,29 @@ function handleDisconnect(socketId, io) {
   for (const [roomId, room] of rooms.entries()) {
     const playerIndex = room.players.findIndex(p => p.socketId === socketId);
     if (playerIndex !== -1) {
-      room.players[playerIndex].isAI = true;
-      room.players[playerIndex].name = `AI (disconnected)`;
-      io.to(roomId).emit('player_disconnect', { socketId });
+      const player = room.players[playerIndex];
+      
+      // Mark as disconnected but keep their spot
+      player.disconnected = true;
+      player.disconnectedAt = Date.now();
+      
+      console.log(`Player ${player.name} disconnected from room ${roomId}`);
+      
+      io.to(roomId).emit('player_disconnect', { 
+        socketId, 
+        playerName: player.name,
+        message: `${player.name} disconnected. They can rejoin with the same name.`
+      });
       io.to(roomId).emit('game_update', room);
+      
+      // If game is in progress, temporarily replace with AI
+      if (room.gameState && room.gameState.phase === 'playing') {
+        player.isAI = true;
+        player.name = `${player.name} (disconnected)`;
+        
+        // Trigger AI if it's their turn
+        setTimeout(() => triggerAI(roomId, io), 1000);
+      }
     }
   }
 }

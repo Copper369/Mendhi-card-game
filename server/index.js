@@ -42,6 +42,15 @@ io.on('connection', (socket) => {
     if (result.success) {
       socket.join(roomId);
       socket.emit('joined_room', result.room);
+      
+      // Notify room about join/reconnection
+      if (result.reconnected) {
+        io.to(roomId).emit('player_reconnected', { 
+          playerName,
+          message: `${playerName} has reconnected!`
+        });
+      }
+      
       io.to(roomId).emit('game_update', result.room);
       console.log(`Room ${roomId} now has ${result.room.players.length} players`);
       
