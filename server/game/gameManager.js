@@ -114,10 +114,17 @@ function dealCardsToPlayers(roomId) {
   if (!room) return;
 
   const deck = shuffleDeck(createDeck());
-  const hands = dealCards(deck, 4);
+  
+  // Deal only 5 cards initially
+  const initialHands = [];
+  for (let i = 0; i < 4; i++) {
+    initialHands.push(deck.splice(0, 5));
+  }
 
+  // Store remaining deck for later
+  room.gameState.remainingDeck = deck;
   room.gameState.phase = 'dealing';
-  room.gameState.hands = hands.map((hand, i) => ({ 
+  room.gameState.hands = initialHands.map((hand, i) => ({ 
     playerId: room.players[i].socketId, 
     cards: hand 
   }));
@@ -152,6 +159,16 @@ function chooseTrump(roomId, socketId, suit) {
 
   room.gameState.trumpSuit = suit;
   room.gameState.waitingForTrumpSelection = false;
+  
+  // Deal remaining 3 cards to each player
+  if (room.gameState.remainingDeck && room.gameState.remainingDeck.length >= 12) {
+    for (let i = 0; i < 4; i++) {
+      const playerHand = room.gameState.hands[i];
+      const additionalCards = room.gameState.remainingDeck.splice(0, 3);
+      playerHand.cards.push(...additionalCards);
+    }
+  }
+  
   room.gameState.phase = 'playing';
 
   return { success: true, room, trumpSuit: suit };
@@ -355,10 +372,16 @@ function nextRound(roomId) {
   room.gameState.trickNumber = 0;
   room.gameState.roundNumber++;
 
-  // Deal cards with animation
+  // Deal cards with animation - only 5 cards initially
   const deck = shuffleDeck(createDeck());
-  const hands = dealCards(deck, 4);
-  room.gameState.hands = hands.map((hand, i) => ({ 
+  const initialHands = [];
+  for (let i = 0; i < 4; i++) {
+    initialHands.push(deck.splice(0, 5));
+  }
+  
+  // Store remaining deck for later
+  room.gameState.remainingDeck = deck;
+  room.gameState.hands = initialHands.map((hand, i) => ({ 
     playerId: room.players[i].socketId, 
     cards: hand 
   }));

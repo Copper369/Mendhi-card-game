@@ -42,6 +42,15 @@ export default function Game() {
       setTimeout(() => setShowDealing(false), 3000);
     });
 
+    socket.on('dealing_remaining_cards', (roomData) => {
+      setTrumpNotification({ message: 'Dealing remaining 3 cards...', isDealing: true });
+      setTimeout(() => {
+        if (trumpNotification?.isDealing) {
+          setTrumpNotification(null);
+        }
+      }, 2000);
+    });
+
     socket.on('trump_selected', ({ trumpSuit, team }) => {
       setTrumpNotification({ trumpSuit, team });
       setTimeout(() => setTrumpNotification(null), 3000);
@@ -105,6 +114,7 @@ export default function Game() {
       socket.off('game_update');
       socket.off('game_started');
       socket.off('dealing_cards');
+      socket.off('dealing_remaining_cards');
       socket.off('trump_selected');
       socket.off('trick_result');
       socket.off('round_result');
@@ -151,9 +161,15 @@ export default function Game() {
 
       {trumpNotification && (
         <div className="fixed top-20 left-1/2 -translate-x-1/2 bg-yellow-400 text-black px-4 sm:px-6 py-2 sm:py-3 rounded-lg shadow-lg z-50 animate-bounce text-sm sm:text-base font-fredoka">
-          <span className="font-bold">
-            {trumpNotification.team === 'teamA' ? 'Team A' : 'Team B'}
-          </span> chose <span className="font-bold capitalize">{trumpNotification.trumpSuit}</span> as trump!
+          {trumpNotification.isDealing ? (
+            <span className="font-bold">{trumpNotification.message}</span>
+          ) : (
+            <>
+              <span className="font-bold">
+                {trumpNotification.team === 'teamA' ? 'Team A' : 'Team B'}
+              </span> chose <span className="font-bold capitalize">{trumpNotification.trumpSuit}</span> as trump!
+            </>
+          )}
         </div>
       )}
 

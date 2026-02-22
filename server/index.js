@@ -79,12 +79,19 @@ io.on('connection', (socket) => {
       const playerPosition = result.room.players.findIndex(p => p.socketId === socket.id);
       const team = playerPosition % 2 === 0 ? 'teamA' : 'teamB';
       io.to(roomId).emit('trump_selected', { trumpSuit: suit, team });
-      io.to(roomId).emit('game_update', result.room);
       
-      // Trigger AI if current player is AI
+      // Notify that remaining cards are being dealt
+      io.to(roomId).emit('dealing_remaining_cards', result.room);
+      
+      // After a short delay, update game state with all cards
       setTimeout(() => {
-        gameManager.triggerAI(roomId, io);
-      }, 1000);
+        io.to(roomId).emit('game_update', result.room);
+        
+        // Trigger AI if current player is AI
+        setTimeout(() => {
+          gameManager.triggerAI(roomId, io);
+        }, 1000);
+      }, 1500); // 1.5 second animation for remaining cards
     } else {
       socket.emit('error', result.message);
     }
