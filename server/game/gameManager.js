@@ -226,9 +226,34 @@ function chooseTrump(roomId, socketId, suit) {
     }
   }
   
+  // Set phase to allow team members to choose who plays first
+  room.gameState.phase = 'choose_first_player';
+  room.gameState.choosingTeam = playerTeam; // Store which team is choosing
+
+  return { success: true, room, trumpSuit: suit, choosingTeam: playerTeam };
+}
+
+function chooseFirstPlayer(roomId, socketId) {
+  const room = rooms.get(roomId);
+  if (!room || !room.gameState) return { success: false, message: 'Game not started' };
+  
+  if (room.gameState.phase !== 'choose_first_player') {
+    return { success: false, message: 'Not in first player selection phase' };
+  }
+
+  // Check if player is from the choosing team
+  const playerPosition = room.players.findIndex(p => p.socketId === socketId);
+  const playerTeam = playerPosition % 2 === 0 ? 0 : 1;
+  
+  if (playerTeam !== room.gameState.choosingTeam) {
+    return { success: false, message: 'Not your team\'s turn to choose' };
+  }
+
+  // Set this player as the starting player
+  room.gameState.currentTurn = playerPosition;
   room.gameState.phase = 'playing';
 
-  return { success: true, room, trumpSuit: suit };
+  return { success: true, room, startingPlayer: playerPosition };
 }
 
 function playCard(roomId, socketId, cardIndex) {
@@ -636,6 +661,7 @@ module.exports = {
   triggerAI,
   setIO,
   chooseTrump,
+  chooseFirstPlayer,
   nextRound,
   resetGame,
   playerReady,

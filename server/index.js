@@ -111,15 +111,27 @@ io.on('connection', (socket) => {
       // Notify that remaining cards are being dealt
       io.to(roomId).emit('dealing_remaining_cards', result.room);
       
-      // After a short delay, update game state with all cards
+      // After a short delay, ask team to choose first player
       setTimeout(() => {
-        io.to(roomId).emit('game_update', result.room);
-        
-        // Trigger AI if current player is AI
-        setTimeout(() => {
-          gameManager.triggerAI(roomId, io);
-        }, 1000);
+        io.to(roomId).emit('choose_first_player', { 
+          room: result.room, 
+          choosingTeam: result.choosingTeam 
+        });
       }, 1500); // 1.5 second animation for remaining cards
+    } else {
+      socket.emit('error', result.message);
+    }
+  });
+
+  socket.on('first_player_chosen', ({ roomId }) => {
+    const result = gameManager.chooseFirstPlayer(roomId, socket.id);
+    if (result.success) {
+      io.to(roomId).emit('game_update', result.room);
+      
+      // Trigger AI if current player is AI
+      setTimeout(() => {
+        gameManager.triggerAI(roomId, io);
+      }, 1000);
     } else {
       socket.emit('error', result.message);
     }

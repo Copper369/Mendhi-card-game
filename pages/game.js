@@ -9,6 +9,7 @@ import DealingAnimation from '../components/DealingAnimation';
 import Celebration from '../components/Celebration';
 import AnimatedBackground from '../components/AnimatedBackground';
 import SpinBottle from '../components/SpinBottle';
+import ChooseFirstPlayer from '../components/ChooseFirstPlayer';
 
 export default function Game() {
   const router = useRouter();
@@ -22,6 +23,7 @@ export default function Game() {
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
   const [pendingNavigation, setPendingNavigation] = useState(null);
   const [showSpinBottle, setShowSpinBottle] = useState(false);
+  const [showChooseFirstPlayer, setShowChooseFirstPlayer] = useState(false);
 
   // Prevent accidental page leave
   useEffect(() => {
@@ -37,8 +39,7 @@ export default function Game() {
       if (room && room.gameState && url !== router.asPath) {
         setShowLeaveConfirm(true);
         setPendingNavigation(url);
-        router.events.emit('routeChangeError');
-        throw 'Route change aborted by user confirmation';
+        throw 'Route change aborted';
       }
     };
 
@@ -53,10 +54,15 @@ export default function Game() {
 
   const handleLeaveGame = () => {
     setShowLeaveConfirm(false);
+    // Disconnect socket
+    if (socket) {
+      socket.disconnect();
+    }
+    // Navigate
     if (pendingNavigation) {
-      router.push(pendingNavigation);
+      window.location.href = pendingNavigation;
     } else {
-      router.push('/');
+      window.location.href = '/';
     }
   };
 
@@ -111,6 +117,11 @@ export default function Game() {
     socket.on('trump_selected', ({ trumpSuit, team }) => {
       setTrumpNotification({ trumpSuit, team });
       setTimeout(() => setTrumpNotification(null), 3000);
+    });
+
+    socket.on('choose_first_player', ({ room: roomData, choosingTeam }) => {
+      setRoom(roomData);
+      setShowChooseFirstPlayer(true);
     });
 
     socket.on('trick_result', (winner) => {
@@ -184,6 +195,7 @@ export default function Game() {
       socket.off('spin_bottle_start');
       socket.off('dealing_remaining_cards');
       socket.off('trump_selected');
+      socket.off('choose_first_player');
       socket.off('trick_result');
       socket.off('round_result');
       socket.off('next_round_start');
@@ -203,6 +215,10 @@ export default function Game() {
   const handleSpinBottleComplete = (selectedTeam) => {
     setShowSpinBottle(false);
     socket.emit('spin_bottle_complete', { roomId, selectedTeam });
+  };
+
+  const handleFirstPlayerChosen = () => {
+    setShowChooseFirstPlayer(false);
   };
 
   if (!room) {
@@ -249,6 +265,7 @@ export default function Game() {
 
       {showDealing && <DealingAnimation />}
       {showSpinBottle && <SpinBottle players={room.players} onComplete={handleSpinBottleComplete} />}
+      {showChooseFirstPlayer && <ChooseFirstPlayer room={room} socket={socket} myPlayer={room.players.find(p => p.socketId === socket.id)} onChoose={handleFirstPlayerChosen} />}
       {showCelebration && <Celebration winner={showCelebration.winner} type={showCelebration.type} />}
       {roundResult && !showCelebration && <RoundResult result={roundResult} onClose={() => setRoundResult(null)} />}
       {matchDashboard && <MatchDashboard dashboard={matchDashboard} onReset={handleResetGame} />}
