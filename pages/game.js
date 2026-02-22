@@ -8,6 +8,7 @@ import MatchDashboard from '../components/MatchDashboard';
 import DealingAnimation from '../components/DealingAnimation';
 import Celebration from '../components/Celebration';
 import AnimatedBackground from '../components/AnimatedBackground';
+import SpinBottle from '../components/SpinBottle';
 
 export default function Game() {
   const router = useRouter();
@@ -20,6 +21,7 @@ export default function Game() {
   const [showCelebration, setShowCelebration] = useState(null);
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
   const [pendingNavigation, setPendingNavigation] = useState(null);
+  const [showSpinBottle, setShowSpinBottle] = useState(false);
 
   // Prevent accidental page leave
   useEffect(() => {
@@ -84,6 +86,10 @@ export default function Game() {
     socket.on('dealing_cards', (roomData) => {
       setShowDealing(true);
       setTimeout(() => setShowDealing(false), 3000);
+    });
+
+    socket.on('spin_bottle_start', (roomData) => {
+      setShowSpinBottle(true);
     });
 
     socket.on('dealing_remaining_cards', (roomData) => {
@@ -168,6 +174,7 @@ export default function Game() {
       socket.off('game_update');
       socket.off('game_started');
       socket.off('dealing_cards');
+      socket.off('spin_bottle_start');
       socket.off('dealing_remaining_cards');
       socket.off('trump_selected');
       socket.off('trick_result');
@@ -184,6 +191,11 @@ export default function Game() {
 
   const handleResetGame = () => {
     socket.emit('reset_game', { roomId });
+  };
+
+  const handleSpinBottleComplete = (selectedTeam) => {
+    setShowSpinBottle(false);
+    socket.emit('spin_bottle_complete', { roomId, selectedTeam });
   };
 
   if (!room) {
@@ -229,6 +241,7 @@ export default function Game() {
       )}
 
       {showDealing && <DealingAnimation />}
+      {showSpinBottle && <SpinBottle players={room.players} onComplete={handleSpinBottleComplete} />}
       {showCelebration && <Celebration winner={showCelebration.winner} type={showCelebration.type} />}
       {roundResult && !showCelebration && <RoundResult result={roundResult} onClose={() => setRoundResult(null)} />}
       {matchDashboard && <MatchDashboard dashboard={matchDashboard} onReset={handleResetGame} />}

@@ -123,10 +123,19 @@ function playerReady(roomId, socketId) {
     room.gameState.readyPlayers.push(socketId);
   }
 
-  // If all players ready, start dealing
+  // If all players ready, start with spin bottle for first round
   if (room.gameState.readyPlayers.length === 4) {
-    dealCardsToPlayers(roomId);
-    return { success: true, allReady: true, room };
+    // Check if this is the first round
+    const isFirstRound = room.gameState.roundNumber === 1;
+    
+    if (isFirstRound) {
+      // Trigger spin bottle animation
+      return { success: true, allReady: true, room, spinBottle: true };
+    } else {
+      // Directly deal cards for subsequent rounds
+      dealCardsToPlayers(roomId);
+      return { success: true, allReady: true, room, spinBottle: false };
+    }
   }
 
   return { success: true, allReady: false, room };
@@ -158,6 +167,19 @@ function dealCardsToPlayers(roomId) {
     room.gameState.phase = 'trump_selection';
     room.gameState.waitingForTrumpSelection = true;
   }, 3000); // 3 second dealing animation
+}
+
+function setSpinBottleResult(roomId, selectedTeam) {
+  const room = rooms.get(roomId);
+  if (!room || !room.gameState) return { success: false };
+
+  // Set the trump choosing team based on spin result
+  room.gameState.trumpChoosingTeam = selectedTeam;
+  
+  // Now deal the cards
+  dealCardsToPlayers(roomId);
+  
+  return { success: true, room };
 }
 
 function chooseTrump(roomId, socketId, suit) {
@@ -606,5 +628,6 @@ module.exports = {
   nextRound,
   resetGame,
   playerReady,
-  dealCardsToPlayers
+  dealCardsToPlayers,
+  setSpinBottleResult
 };

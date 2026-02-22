@@ -71,14 +71,33 @@ io.on('connection', (socket) => {
       io.to(roomId).emit('game_update', result.room);
       
       if (result.allReady) {
-        io.to(roomId).emit('dealing_cards', result.room);
-        
-        // After dealing animation, trigger trump selection
-        setTimeout(() => {
-          io.to(roomId).emit('game_update', gameManager.getRoom(roomId));
-          gameManager.triggerAI(roomId, io);
-        }, 3500);
+        if (result.spinBottle) {
+          // Trigger spin bottle animation for first round
+          io.to(roomId).emit('spin_bottle_start', result.room);
+        } else {
+          // Directly deal cards for subsequent rounds
+          io.to(roomId).emit('dealing_cards', result.room);
+          
+          // After dealing animation, trigger trump selection
+          setTimeout(() => {
+            io.to(roomId).emit('game_update', gameManager.getRoom(roomId));
+            gameManager.triggerAI(roomId, io);
+          }, 3500);
+        }
       }
+    }
+  });
+
+  socket.on('spin_bottle_complete', ({ roomId, selectedTeam }) => {
+    const result = gameManager.setSpinBottleResult(roomId, selectedTeam);
+    if (result.success) {
+      io.to(roomId).emit('dealing_cards', result.room);
+      
+      // After dealing animation, trigger trump selection
+      setTimeout(() => {
+        io.to(roomId).emit('game_update', gameManager.getRoom(roomId));
+        gameManager.triggerAI(roomId, io);
+      }, 3500);
     }
   });
 
