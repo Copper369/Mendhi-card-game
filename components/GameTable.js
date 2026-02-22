@@ -37,7 +37,11 @@ export default function GameTable({ room, socket }) {
   }
 
   const currentPlayerIndex = room.gameState?.currentTurn ?? 0;
-  const myHand = room.gameState?.hands?.find(h => h.playerId === socket.id);
+  // Try to find hand by socket ID first, then by player name as fallback
+  let myHand = room.gameState?.hands?.find(h => h.playerId === socket.id);
+  if (!myHand && myPlayer) {
+    myHand = room.gameState?.hands?.find(h => h.playerName === myPlayer.name);
+  }
   const isMyTurn = myPlayer && room.players[currentPlayerIndex]?.socketId === socket.id;
   const myTeam = myPlayer ? (myPlayer.position % 2 === 0 ? 'teamA' : 'teamB') : null;
   const trumpChoosingTeam = room.gameState?.trumpChoosingTeam === 0 ? 'teamA' : 'teamB';

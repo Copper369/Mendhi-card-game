@@ -30,14 +30,25 @@ function joinRoom(roomId, socketId, playerName) {
   if (existingPlayerIndex !== -1) {
     // Player is reconnecting - update their socket ID
     const existingPlayer = room.players[existingPlayerIndex];
+    const oldSocketId = existingPlayer.socketId;
     existingPlayer.socketId = socketId;
     existingPlayer.disconnected = false;
     
-    // Update hands if game is in progress
+    // If they were temporarily replaced by AI, restore them
+    if (existingPlayer.isAI) {
+      existingPlayer.isAI = false;
+      // Remove the "(disconnected)" suffix from name if present
+      existingPlayer.name = playerName;
+    }
+    
+    // Update hands if game is in progress - search by player name
     if (room.gameState && room.gameState.hands) {
-      const handIndex = room.gameState.hands.findIndex(h => h.playerId === existingPlayer.socketId || h.playerName === playerName);
+      const handIndex = room.gameState.hands.findIndex(h => h.playerName === playerName);
       if (handIndex !== -1) {
         room.gameState.hands[handIndex].playerId = socketId;
+        console.log(`Updated hand for ${playerName}: ${room.gameState.hands[handIndex].cards.length} cards`);
+      } else {
+        console.log(`Warning: Could not find hand for ${playerName}`);
       }
     }
     

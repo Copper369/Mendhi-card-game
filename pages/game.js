@@ -72,6 +72,13 @@ export default function Game() {
     }
 
     socket.on('joined_room', (roomData) => {
+      console.log('Joined room:', roomData.roomId);
+      console.log('My socket ID:', socket.id);
+      console.log('Game state:', roomData.gameState);
+      if (roomData.gameState?.hands) {
+        const myHand = roomData.gameState.hands.find(h => h.playerId === socket.id);
+        console.log('My hand on join:', myHand);
+      }
       setRoom(roomData);
     });
 
