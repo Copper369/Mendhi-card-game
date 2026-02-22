@@ -446,8 +446,9 @@ function nextRound(roomId) {
   const startingPosition = startingTeam === 0 ? 0 : 1;
 
   // IMPORTANT: Alternate trump choosing team each round
-  // Round 1: Team A (0), Round 2: Team B (1), Round 3: Team A (0), etc.
-  const trumpChoosingTeam = room.gameState.roundNumber % 2 === 0 ? 1 : 0;
+  // Switch to the OTHER team from the previous round
+  const previousTrumpChoosingTeam = room.gameState.trumpChoosingTeam;
+  const trumpChoosingTeam = previousTrumpChoosingTeam === 0 ? 1 : 0;
 
   // Reset for new round but keep scores
   room.gameState.phase = 'dealing';

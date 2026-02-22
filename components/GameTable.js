@@ -101,27 +101,23 @@ export default function GameTable({ room, socket, endGameVotes }) {
               <div className="text-blue-700">Team A: {room.gameState?.teamScores?.teamA ?? 0}</div>
               <div className="text-red-700">Team B: {room.gameState?.teamScores?.teamB ?? 0}</div>
             </div>
-            {room.gameState?.roundNumber >= 3 && (
-              <>
-                <button
-                  onClick={() => socket.emit('end_game_early', { roomId: room.roomId })}
-                  className="mt-2 w-full bg-red-600 hover:bg-red-700 text-white text-xs py-1 px-2 rounded transition"
-                >
-                  End Game
-                </button>
-                {endGameVotes && endGameVotes.votes > 0 && (
-                  <div className="mt-2 bg-yellow-100 border border-yellow-400 rounded p-1.5">
-                    <div className="text-[10px] font-bold text-yellow-800 mb-0.5">
-                      Votes: {endGameVotes.votes}/{endGameVotes.needed}
-                    </div>
-                    <div className="text-[9px] text-yellow-700">
-                      {endGameVotes.voters.map((voter, idx) => (
-                        <div key={idx}>✓ {voter}</div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </>
+            <button
+              onClick={() => socket.emit('end_game_early', { roomId: room.roomId })}
+              className="mt-2 w-full bg-red-600 hover:bg-red-700 text-white text-xs py-1 px-2 rounded transition"
+            >
+              End Game
+            </button>
+            {endGameVotes && endGameVotes.votes > 0 && (
+              <div className="mt-2 bg-yellow-100 border border-yellow-400 rounded p-1.5">
+                <div className="text-[10px] font-bold text-yellow-800 mb-0.5">
+                  Votes: {endGameVotes.votes}/{endGameVotes.needed}
+                </div>
+                <div className="text-[9px] text-yellow-700">
+                  {endGameVotes.voters.map((voter, idx) => (
+                    <div key={idx}>✓ {voter}</div>
+                  ))}
+                </div>
+              </div>
             )}
           </div>
 
