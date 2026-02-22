@@ -1,4 +1,9 @@
 export default function ChooseFirstPlayer({ room, socket, myPlayer, onChoose }) {
+  // Don't show if phase is not choose_first_player
+  if (room.gameState?.phase !== 'choose_first_player') {
+    return null;
+  }
+
   const myTeam = myPlayer ? (myPlayer.position % 2 === 0 ? 'teamA' : 'teamB') : null;
   const choosingTeam = room.gameState?.choosingTeam === 0 ? 'teamA' : 'teamB';
   const canChoose = myTeam === choosingTeam;

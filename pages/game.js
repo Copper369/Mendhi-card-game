@@ -90,6 +90,10 @@ export default function Game() {
 
     socket.on('game_update', (roomData) => {
       setRoom(roomData);
+      // Close choose first player dialog when phase changes to playing
+      if (roomData.gameState?.phase === 'playing' && showChooseFirstPlayer) {
+        setShowChooseFirstPlayer(false);
+      }
     });
 
     socket.on('game_started', (roomData) => {
@@ -206,7 +210,7 @@ export default function Game() {
       socket.off('player_disconnect');
       socket.off('player_reconnected');
     };
-  }, [socket, roomId, router, setRoom, addChatMessage, trumpNotification]);
+  }, [socket, roomId, router, setRoom, addChatMessage, trumpNotification, showChooseFirstPlayer]);
 
   const handleResetGame = () => {
     socket.emit('reset_game', { roomId });
